@@ -2,12 +2,14 @@ package de.dfki.omm.interfaces;
 
 import de.dfki.omm.types.TypedValue;
 
+import java.io.Serializable;
+
 /***
  * Contains all information of a OMM header.
  * @author Jens Haupert (jens.haupert@dfki.de)
  *
  */
-public interface OMMHeader 
+public interface OMMHeader extends Serializable
 {
 	/***
 	 * Retrieves the version of this object memory model.

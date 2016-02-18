@@ -1,12 +1,17 @@
 package de.dfki.omm.impl;
 
+import java.io.IOException;
+import java.net.MalformedURLException;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
+import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map.Entry;
 import java.util.Vector;
 
+import de.dfki.omm.types.*;
 import org.json.JSONObject;
 import org.w3c.dom.Element;
 
@@ -14,20 +19,31 @@ import de.dfki.omm.events.OMMEvent;
 import de.dfki.omm.events.OMMEventType;
 import de.dfki.omm.interfaces.OMMBlock;
 import de.dfki.omm.tools.OMMXMLConverter;
-import de.dfki.omm.types.BinaryValue;
-import de.dfki.omm.types.OMMEntity;
-import de.dfki.omm.types.OMMEntityCollection;
-import de.dfki.omm.types.OMMFormat;
-import de.dfki.omm.types.OMMMultiLangText;
-import de.dfki.omm.types.OMMPreviousBlockLink;
-import de.dfki.omm.types.OMMSubjectCollection;
-import de.dfki.omm.types.OMMSubjectTag;
-import de.dfki.omm.types.OMMSubjectTagType;
-import de.dfki.omm.types.TypedValue;
+
+import static de.dfki.omm.impl.OMMFactory.getNextDataFromBinary;
 
 /** Implementation of {@link OMMBlock}. */
 public class OMMBlockImpl implements OMMBlock 
 {
+
+	public static final String NEW_BLOCK_CODE =			"b";
+	public static final String ID_CODE = 				"i";
+	public static final String TITLE_CODE = 			"t";
+	public static final String TITLELOCALE_CODE =	 	"tl";
+	public static final String CREATOR_CODE = 			"c";
+	public static final String PRIMARYID_CODE = 		"r";
+	public static final String NAMESPACE_CODE = 		"n";
+	public static final String TYPE_CODE = 				"y";
+	public static final String DESCRIPTION_CODE =	 	"d";
+	public static final String DESCRIPTIONLOCALE_CODE =	"dl";
+	public static final String CONTRIBUTORS_CODE = 		"o";
+	public static final String CONTRIBUTOR_CODE = 		"co";
+	public static final String FORMAT_CODE = 			"f";
+	public static final String SUBJECT_CODE = 			"s";
+	public static final String SUBJECTTAG_CODE = 		"st";
+	public static final String PAYLOAD_CODE = 			"p";
+	public static final String LINK_CODE = 				"l";
+
 	protected String m_ID;
 	protected URI m_namespace;
 	protected URL m_type;
@@ -174,8 +190,7 @@ public class OMMBlockImpl implements OMMBlock
 
 		return block;
 	}
-	
-	
+
 	/** @return A list of possible payload types as {@link URL}s. */
 	public static List<URL> getTypes() { return m_types; }
 	
@@ -369,7 +384,7 @@ public class OMMBlockImpl implements OMMBlock
 	
 	/**
 	 * Adds a contributor to this block, supplementing previous contributors.
-	 * @param contributors The contributor to add to this block as {@link OMMEntity}
+	 * @param contributor The contributor to add to this block as {@link OMMEntity}
 	 */
 	public void addContributor(OMMEntity contributor) 
 	{ 
@@ -446,6 +461,9 @@ public class OMMBlockImpl implements OMMBlock
 		if (m_parentOMM != null) m_parentOMM.fireOMMEvent(new OMMEvent(m_parentOMM, this, entity, OMMEventType.PAYLOAD_CHANGED));
 	}
 
+	public void setPrimaryID (TypedValue newId) {
+		m_primaryID = newId;
+	}
 
 	public boolean removeTitle(Locale language, OMMEntity entity)
 	{
@@ -640,4 +658,279 @@ public class OMMBlockImpl implements OMMBlock
 		return message;
 	}
 
+	/**
+	 * Custom method to serialize OMMBlockImpls and their content properly
+	 *
+	 * @param outputStream Stream to write to
+	 * @throws IOException
+	 */
+	private synchronized void writeObject(java.io.ObjectOutputStream outputStream) throws IOException {
+
+		// write serializable memory information
+		outputStream.defaultWriteObject();
+
+		// write block metadata and content
+		// (order of written objects will be maintained when reading)
+		outputStream.writeObject(this.getPrimaryID());			// write primary ID
+		outputStream.writeObject(this.getID()); 				// write ID
+		outputStream.writeObject(this.getNamespace());			// write namespace
+		outputStream.writeObject(this.getFormat());				// write format
+		outputStream.writeObject(this.getCreator());			// write creator
+		outputStream.writeObject(this.getContributors());		// write contributors
+		outputStream.writeObject(this.getTitle());				// write title
+		outputStream.writeObject(this.getDescription());		// write description
+		outputStream.writeObject(this.getType());				// write type
+		outputStream.writeObject(this.getLink());				// write link
+		outputStream.writeObject(this.getLinkHash());			// write link hash
+		outputStream.writeObject(this.getSubject());			// write subject
+		outputStream.writeObject(this.getPreviousLink());		// write previous element
+		outputStream.writeObject(this.getPayload());			// write payload
+		outputStream.writeObject(this.getPayloadElement());		// write payload element
+
+	}
+
+	/**
+	 * Custom method to deserialize OMMBlockImpls and their content properly
+	 *
+	 * @param inputStream Stream to read from
+	 * @throws IOException
+	 */
+	private synchronized void readObject(java.io.ObjectInputStream inputStream) throws IOException, ClassNotFoundException {
+
+		// read basic memory information
+		inputStream.defaultReadObject();
+
+		// read block metadata and content
+		TypedValue storedPrimaryId = null;					// read primary ID
+		Object loadedInfo = inputStream.readObject();
+		if (loadedInfo instanceof TypedValue) {
+			storedPrimaryId = (TypedValue) loadedInfo;
+		}
+		String storedId = null;								// read ID
+		loadedInfo = inputStream.readObject();
+		if (loadedInfo instanceof String) {
+			storedId = (String) loadedInfo;
+		}
+		URI storedNamespace = null;							// read namespace
+		loadedInfo = inputStream.readObject();
+		if (loadedInfo instanceof URI) {
+			storedNamespace = (URI) loadedInfo;
+		}
+		OMMFormat storedFormat = null;						// read format
+		loadedInfo = inputStream.readObject();
+		if (loadedInfo instanceof OMMFormat) {
+			storedFormat = (OMMFormat) loadedInfo;
+		}
+		OMMEntity storedCreator = null;						// read creator
+		loadedInfo = inputStream.readObject();
+		if (loadedInfo instanceof OMMEntity) {
+			storedCreator = (OMMEntity) loadedInfo;
+		}
+		OMMEntityCollection storedContributors = null;		// read contributors
+		loadedInfo = inputStream.readObject();
+		if (loadedInfo instanceof OMMEntityCollection) {
+			storedContributors = (OMMEntityCollection) loadedInfo;
+		}
+		OMMMultiLangText storedTitle = null;				// read title
+		loadedInfo = inputStream.readObject();
+		if (loadedInfo instanceof OMMMultiLangText) {
+			storedTitle = (OMMMultiLangText) loadedInfo;
+		}
+		OMMMultiLangText storedDescription = null;			// read description
+		loadedInfo = inputStream.readObject();
+		if (loadedInfo instanceof OMMMultiLangText) {
+			storedDescription = (OMMMultiLangText) loadedInfo;
+		}
+		URL storedType = null;								// read type
+		loadedInfo = inputStream.readObject();
+		if (loadedInfo instanceof URL) {
+			storedType = (URL) loadedInfo;
+		}
+		TypedValue storedLink = null;						// read link
+		loadedInfo = inputStream.readObject();
+		if (loadedInfo instanceof TypedValue) {
+			storedLink = (TypedValue) loadedInfo;
+		}
+		String storedLinkHash = null;						// read link hash
+		loadedInfo = inputStream.readObject();
+		if (loadedInfo instanceof String) {
+			storedLinkHash = (String) loadedInfo;
+		}
+		OMMSubjectCollection storedSubject = null;			// read subject
+		loadedInfo = inputStream.readObject();
+		if (loadedInfo instanceof OMMSubjectCollection) {
+			storedSubject = (OMMSubjectCollection) loadedInfo;
+		}
+		OMMPreviousBlockLink storedPrevious = null;			// read previous element
+		loadedInfo = inputStream.readObject();
+		if (loadedInfo instanceof OMMPreviousBlockLink) {
+			storedPrevious = (OMMPreviousBlockLink) loadedInfo;
+		}
+		TypedValue storedPayload = null;					// read payload
+		loadedInfo = inputStream.readObject();
+		if (loadedInfo instanceof TypedValue) {
+			storedPayload = (TypedValue) loadedInfo;
+		}
+		Element storedPayloadElement = null;				// read payload element
+		loadedInfo = inputStream.readObject();
+		if (loadedInfo instanceof Element) {
+			storedPayloadElement = (Element) loadedInfo;
+		}
+	}
+
+	/**
+	 * Creates a new OMMBlockImpl by reading all given info from a byte buffer
+	 * @param byteBuffer the byte buffer containing binary block information
+	 */
+	public static OMMBlock createFromBinary(ByteBuffer byteBuffer) {
+
+		// block variables
+		String id = null;
+		TypedValue primaryID = null;
+		URI namespace = null;
+		URL type = null;
+		OMMMultiLangText title = null;
+		OMMMultiLangText description = null;
+		OMMEntityCollection contributors = null;
+		OMMEntity creator = null;
+		OMMFormat format = null;
+		OMMSubjectCollection subject = null;
+		TypedValue payload = null;
+		TypedValue link = null;
+
+		// read the complete byte buffer
+		String entryName = null;
+		while (byteBuffer.position() < byteBuffer.limit()) {
+
+			// get entry name
+			entryName = new String(getNextDataFromBinary(byteBuffer));
+
+			// collect block data
+			switch (entryName) {
+				case ID_CODE:
+					id = new String(getNextDataFromBinary(byteBuffer));
+					break;
+				case TITLE_CODE:
+					title = new OMMMultiLangText();
+					break;
+				case TITLELOCALE_CODE:
+					Locale locale = new Locale(new String(getNextDataFromBinary(byteBuffer)));
+					String localizedTitle = new String(getNextDataFromBinary(byteBuffer));
+					title.put(locale, localizedTitle);
+					break;
+				case CREATOR_CODE:
+					String creatortype = new String(getNextDataFromBinary(byteBuffer));
+					String creatorvalue = new String(getNextDataFromBinary(byteBuffer));
+					String creatordate = new String(getNextDataFromBinary(byteBuffer));
+					creator = new OMMEntity(creatortype, creatorvalue, creatordate);
+					break;
+				case PRIMARYID_CODE:
+					String primarytype = new String(getNextDataFromBinary(byteBuffer));
+					String primaryvalue = new String(getNextDataFromBinary(byteBuffer));
+					primaryID = new GenericTypedValue(primarytype, primaryvalue);
+					break;
+				case NAMESPACE_CODE:
+					String ns = new String(getNextDataFromBinary(byteBuffer));
+					try { namespace = new URI(ns); }
+					catch (URISyntaxException e) { e.printStackTrace(); }
+					break;
+				case TYPE_CODE:
+					String ts = new String(getNextDataFromBinary(byteBuffer));
+					try { type = new URL(ts); }
+					catch (MalformedURLException e) { e.printStackTrace(); }
+					break;
+				case DESCRIPTION_CODE:
+					description = new OMMMultiLangText();
+					break;
+				case DESCRIPTIONLOCALE_CODE:
+					Locale dlocale = new Locale(new String(getNextDataFromBinary(byteBuffer)));
+					String localizedDescription = new String(getNextDataFromBinary(byteBuffer));
+					description.put(dlocale, localizedDescription);
+					break;
+				case CONTRIBUTORS_CODE:
+					contributors = new OMMEntityCollection();
+					break;
+				case CONTRIBUTOR_CODE:
+					String contributortype = new String(getNextDataFromBinary(byteBuffer));
+					String contributorvalue = new String(getNextDataFromBinary(byteBuffer));
+					String contributordate = new String(getNextDataFromBinary(byteBuffer));
+					contributors.add(new OMMEntity(contributortype, contributorvalue, contributordate));
+					break;
+				case FORMAT_CODE:
+					String mimetype = new String(getNextDataFromBinary(byteBuffer));
+					String schemastring = new String(getNextDataFromBinary(byteBuffer));
+					URL schema = null;
+					if (schemastring.length() > 0) {
+						try { schema = new URL(schemastring); }
+						catch (MalformedURLException e) { e.printStackTrace(); }
+					}
+					String encoding = new String(getNextDataFromBinary(byteBuffer));
+					if (encoding.length() == 0) encoding = null;
+					format = new OMMFormat(mimetype, schema, encoding);
+					break;
+				case SUBJECT_CODE:
+					subject = new OMMSubjectCollection();
+					break;
+				case SUBJECTTAG_CODE:
+					subject.add(getSubjectTagFromBinary(byteBuffer));
+					break;
+				case PAYLOAD_CODE:
+					String payloadtype = new String(getNextDataFromBinary(byteBuffer));
+					String payloadvalue = new String(getNextDataFromBinary(byteBuffer));
+					payload = new GenericTypedValue(payloadtype, payloadvalue);
+					break;
+				case LINK_CODE:
+					String linktype = new String(getNextDataFromBinary(byteBuffer));
+					String linkvalue = new String(getNextDataFromBinary(byteBuffer));
+					link = new GenericTypedValue(linktype, linkvalue);
+					break;
+				case NEW_BLOCK_CODE:
+					// a new block starts here, create and return this one
+					return create(id, primaryID, namespace, type, title, description, contributors,
+							creator, format, subject, payload, null, link, null);
+				default:
+					System.err.println("Could not read block entry named '" + entryName + "'.");
+			}
+		}
+
+		// create and return block from collected data
+		return create(id, primaryID, namespace, type, title, description, contributors,
+				creator, format, subject, payload, null, link, null);
+	}
+
+	/**
+	 * Writes this OMMBlockImpl and its selected contents to a byte buffer
+	 * @param byteBuffer the byte buffer to write
+	 */
+	public static void writeToBinary(ByteBuffer byteBuffer,
+		 boolean savePrimaryID, boolean saveNamespace, boolean saveType, boolean saveDescription,
+		 boolean saveContributors, boolean saveFormat, boolean saveSubject, boolean savePayload,
+		 boolean saveLink)
+	{
+
+
+
+	}
+
+	/**
+	 * Retrieves a subject tag and its potential children from a byte buffer.
+	 * @param byteBuffer the byte buffer from which to read
+	 * @return The retrieved OMMSubjectTag
+	 */
+	private static OMMSubjectTag getSubjectTagFromBinary(ByteBuffer byteBuffer) {
+
+		// collect tag data
+		String tagtype = new String(getNextDataFromBinary(byteBuffer));
+		String tagtext = new String(getNextDataFromBinary(byteBuffer));
+		String child = new String(getNextDataFromBinary(byteBuffer));
+
+		// if the tag has a child, retrieve that too
+		OMMSubjectTag tagchild = null;
+		if (child.length() > 0) {
+			tagchild = getSubjectTagFromBinary(byteBuffer);
+		}
+
+		// create and return new tag
+		return new OMMSubjectTag(OMMSubjectTagType.valueOf(tagtype), tagtext, tagchild);
+	}
 }

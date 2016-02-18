@@ -4,12 +4,14 @@
 package de.dfki.omm.impl.rest;
 
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.util.Collection;
 import java.util.GregorianCalendar;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Vector;
 
+import de.dfki.omm.impl.OMMFactory;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.restlet.Response;
@@ -79,6 +81,7 @@ public class OMMRestImpl implements OMM, OMMRestInterface {
 	 * @see de.dfki.omm.interfaces.OMM#addBlock(de.dfki.omm.interfaces.OMMBlock, de.dfki.omm.types.OMMEntity)
 	 */
 	public OMMActionResultType addBlock(OMMBlock block, OMMEntity entity) {
+
 		try {
 			String blockString = OMMXMLConverter.toXMLFileString(OMMXMLConverter.generateCompleteBlock(block, true));
 			Response rep = this.postBlock(blockString);
@@ -144,9 +147,9 @@ public class OMMRestImpl implements OMM, OMMRestInterface {
 		    if (mode != OMMRestAccessMode.SingleAccess ) blockIDsCache = retVal;
 		    lastAccess = now;
 		    
-		    return retVal;		    
+		    return retVal;
 		}
-		catch(Exception e){e.printStackTrace();}
+		catch(Exception e){ e.printStackTrace(); }
 		
 		return null;
 		
@@ -215,9 +218,9 @@ public class OMMRestImpl implements OMM, OMMRestInterface {
 		        sb.append((char)c);
 		    }
 		    
-		    Document doc = OMMXMLConverter.getXmlDocumentFromString(OMMXMLConverter.getInputStreamFromText(sb.toString())); 
-		    
-		    return OMMXMLConverter.parseHeader(doc.getDocumentElement());
+		    Document doc = OMMXMLConverter.getXmlDocumentFromString(OMMXMLConverter.getInputStreamFromText(sb.toString()));
+
+			return OMMXMLConverter.parseHeader(doc.getDocumentElement());
 			
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -345,5 +348,91 @@ public class OMMRestImpl implements OMM, OMMRestInterface {
 	}
 
 
+
+
+	/**
+	 * Custom method to serialize OMMRestImpls and their blocks properly
+	 *
+	 * @param outputStream Stream to write to
+	 * @throws IOException
+	 */
+	private synchronized void writeObject(java.io.ObjectOutputStream outputStream) throws IOException {
+
+		// write basic memory information
+		outputStream.defaultWriteObject();
+
+		// write header
+		outputStream.writeObject(getHeader());
+
+		// write owner
+		String[] primaryID = getHeader().getPrimaryID().getValue().toString().split("/");
+		String memoryName = primaryID[primaryID.length-1];
+		outputStream.writeObject(OMMFactory.getOwnerBlockFromOMM(memoryName));
+
+		// write memory blocks
+		// (order of written objects will be maintained when reading)
+		Collection<OMMBlock> blocks = this.getAllBlocks();
+		if (blocks != null) {
+			outputStream.writeObject(blocks.size()); 			// write number of blocks
+			for (OMMBlock block: blocks) {						// write blocks
+				if (block instanceof OMMBlockRestImpl)
+					outputStream.writeObject(((OMMBlockRestImpl) block).getAsRegularBlock());
+				else
+					outputStream.writeObject(block);
+			}
+		}
+		else outputStream.writeObject(0);						// if memory does not contain blocks
+
+	}
+
+	/**
+	 * Custom method to deserialize OMMRestImpls and their blocks properly
+	 *
+	 * @param inputStream Stream to read from
+	 * @throws IOException
+	 */
+	private synchronized void readObject(java.io.ObjectInputStream inputStream) throws IOException, ClassNotFoundException {
+
+		// read basic memory information
+		inputStream.defaultReadObject();
+
+		// read header
+		OMMHeader header = null;
+		Object loadedInfo = inputStream.readObject();
+		if (loadedInfo instanceof OMMHeader) {
+			header = (OMMHeader) loadedInfo;
+		}
+
+		// read owner
+		OMMBlock owner = null;
+		loadedInfo = inputStream.readObject();
+		if (loadedInfo instanceof OMMBlock) {
+			owner = (OMMBlock) loadedInfo;
+		}
+
+		// create new OMM on the OMS and add loaded blocks
+		if (header != null) {
+
+			// create empty OMM to add blocks to
+			String omsUrl = header.getPrimaryID().getValue().toString();
+			omsUrl = omsUrl.substring(0, omsUrl.indexOf("rest/"));
+			OMMFactory.createOMMViaOMSRestInterface(omsUrl + "mgmt/createMemory", header, owner);
+			//OMMFactory.createOMMViaOMSRestInterface(omsUrl + "mgmt/createMemory", header, null);
+
+			// read memory blocks
+			loadedInfo = inputStream.readObject(); 		// read number of blocks
+			int numberOfBlocks = -1;
+			if (loadedInfo instanceof Integer) {
+				numberOfBlocks = (int) loadedInfo;
+			}
+			for (int i = 0; i < numberOfBlocks; i++) {			// read blocks
+				loadedInfo = inputStream.readObject();
+				if (loadedInfo instanceof OMMBlock) {
+					OMMBlock block = (OMMBlock) loadedInfo;
+					this.addBlock(block, block.getCreator());
+				}
+			}
+		}
+	}
 
 }

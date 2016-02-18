@@ -1,5 +1,6 @@
 package de.dfki.omm.interfaces;
 
+import java.io.Serializable;
 import java.net.URI;
 import java.util.Locale;
 
@@ -14,7 +15,7 @@ import de.dfki.omm.types.OMMSubjectTagType;
  * @author Jens Haupert (jens.haupert@dfki.de)
  *
  */
-public interface OMMToCEntry
+public interface OMMToCEntry extends Serializable
 {
 	/**
 	 * Gets the ID of this block.

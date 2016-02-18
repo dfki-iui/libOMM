@@ -9,12 +9,7 @@ import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
-import java.util.AbstractMap;
-import java.util.GregorianCalendar;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.Locale;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
 
 import javax.xml.parsers.SAXParser;
@@ -141,6 +136,20 @@ public class OMMBlockRestImpl implements OMMBlock {
 		((OMMBlockImpl)shadowBlock).setPayload(getPayload(), OMMEntity.getDummyEntity());
 		
 		return new OMMAttributeListBlockImpl((OMMBlockImpl)shadowBlock);
+	}
+
+	/** Retrieves the shadowBblock as a regular OMMBlockImpl.
+	 * @return The block as {@link OMMBlockImpl}.
+	 * @throws Exception If conversion is attempted in SingleAccess mode.
+	 */
+	public OMMBlockImpl getAsRegularBlock()	{
+
+		UpdateShadowBlock();
+		if (getCreator() == null)
+			shadowBlock.setPayload(getPayload(), OMMEntity.getDummyEntity());
+		else shadowBlock.setPayload(getPayload(), getCreator());
+
+		return shadowBlock;
 	}
 	
 	/** Retrieves the current access mode.
@@ -272,8 +281,8 @@ public class OMMBlockRestImpl implements OMMBlock {
 			if (node instanceof Element)
 			{
 				Element e = (Element)node;
-				OMMSubjectTagType type = OMMSubjectTagType.valueOf(e.getAttribute(OMMXMLConverter.OMM_NAMESPACE_PREFIX+":type"));
-				String value = e.getAttribute(OMMXMLConverter.OMM_NAMESPACE_PREFIX+":value");
+				OMMSubjectTagType type = OMMSubjectTagType.valueOf(e.getAttribute(OMMXMLConverter.OMM_NAMESPACE_PREFIX + ":type"));
+				String value = e.getAttribute(OMMXMLConverter.OMM_NAMESPACE_PREFIX + ":value");
 				OMMSubjectTag tag = new OMMSubjectTag(type, value, null);
 				subjects.add(tag);
 			}
@@ -1042,5 +1051,103 @@ public class OMMBlockRestImpl implements OMMBlock {
 		String message = wrapper.toString();
 		return message;
 	}
+
+
+
+
+//	/**
+//	 * Custom method to deserialize OMMBlockRestImpls and their content properly
+//	 *
+//	 * @param inputStream Stream to read from
+//	 * @throws IOException
+//	 */
+//	private synchronized void readObject(java.io.ObjectInputStream inputStream) throws IOException, ClassNotFoundException {
+//
+//		System.out.println("OMMBlockRestImpl.readObject");
+//
+//		// read basic memory information
+//		inputStream.defaultReadObject();
+//
+//		// read block metadata and content
+//		TypedValue storedPrimaryId = null;					// read primary ID
+//		Object loadedInfo = inputStream.readObject();
+//		if (loadedInfo instanceof TypedValue) {
+//			storedPrimaryId = (TypedValue) loadedInfo;
+//		}
+//		String storedId = null;								// read ID
+//		loadedInfo = inputStream.readObject();
+//		if (loadedInfo instanceof String) {
+//			storedId = (String) loadedInfo;
+//		}
+//		URI storedNamespace = null;							// read namespace
+//		loadedInfo = inputStream.readObject();
+//		if (loadedInfo instanceof URI) {
+//			storedNamespace = (URI) loadedInfo;
+//		}
+//		OMMFormat storedFormat = null;						// read format
+//		loadedInfo = inputStream.readObject();
+//		if (loadedInfo instanceof OMMFormat) {
+//			storedFormat = (OMMFormat) loadedInfo;
+//		}
+//		OMMEntity storedCreator = null;						// read creator
+//		loadedInfo = inputStream.readObject();
+//		if (loadedInfo instanceof OMMEntity) {
+//			storedCreator = (OMMEntity) loadedInfo;
+//		}
+//		OMMEntityCollection storedContributors = null;		// read contributors
+//		loadedInfo = inputStream.readObject();
+//		if (loadedInfo instanceof OMMEntityCollection) {
+//			storedContributors = (OMMEntityCollection) loadedInfo;
+//		}
+//		OMMMultiLangText storedTitle = null;				// read title
+//		loadedInfo = inputStream.readObject();
+//		if (loadedInfo instanceof OMMMultiLangText) {
+//			storedTitle = (OMMMultiLangText) loadedInfo;
+//		}
+//		OMMMultiLangText storedDescription = null;			// read description
+//		loadedInfo = inputStream.readObject();
+//		if (loadedInfo instanceof OMMMultiLangText) {
+//			storedDescription = (OMMMultiLangText) loadedInfo;
+//		}
+//		URL storedType = null;								// read type
+//		loadedInfo = inputStream.readObject();
+//		if (loadedInfo instanceof URL) {
+//			storedType = (URL) loadedInfo;
+//		}
+//		TypedValue storedLink = null;						// read link
+//		loadedInfo = inputStream.readObject();
+//		if (loadedInfo instanceof TypedValue) {
+//			storedLink = (TypedValue) loadedInfo;
+//		}
+//		String storedLinkHash = null;						// read link hash
+//		loadedInfo = inputStream.readObject();
+//		if (loadedInfo instanceof String) {
+//			storedLinkHash = (String) loadedInfo;
+//		}
+//		OMMSubjectCollection storedSubject = null;			// read subject
+//		loadedInfo = inputStream.readObject();
+//		if (loadedInfo instanceof OMMSubjectCollection) {
+//			storedSubject = (OMMSubjectCollection) loadedInfo;
+//		}
+//		OMMPreviousBlockLink storedPrevious = null;			// read previous element
+//		loadedInfo = inputStream.readObject();
+//		if (loadedInfo instanceof OMMPreviousBlockLink) {
+//			storedPrevious = (OMMPreviousBlockLink) loadedInfo;
+//		}
+//		TypedValue storedPayload = null;					// read payload
+//		loadedInfo = inputStream.readObject();
+//		if (loadedInfo instanceof TypedValue) {
+//			storedPayload = (TypedValue) loadedInfo;
+//		}
+//		Element storedPayloadElement = null;				// read payload element
+//		loadedInfo = inputStream.readObject();
+//		if (loadedInfo instanceof Element) {
+//			storedPayloadElement = (Element) loadedInfo;
+//		}
+//
+//		// create shadowBlock from the gathered info
+//		shadowBlock = (OMMBlockImpl) OMMBlockImpl.create(storedId, storedPrimaryId, storedNamespace, storedType, storedTitle, storedDescription, storedContributors, storedCreator, storedFormat, storedSubject, storedPrevious, storedPayload, storedPayloadElement, storedLink, storedLinkHash);
+//
+//	}
 
 }

@@ -6,16 +6,18 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
 import java.text.SimpleDateFormat;
-import java.util.Calendar;
-import java.util.Locale;
-import java.util.Random;
-import java.util.logging.Level;
+import java.util.*;
 
+import de.dfki.omm.impl.OMMImpl;
+import de.dfki.omm.interfaces.OMM;
+import de.dfki.omm.interfaces.OMMHeader;
+import de.dfki.omm.types.*;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -27,12 +29,6 @@ import de.dfki.omm.impl.OMMFactory;
 import de.dfki.omm.impl.OMMHeaderImpl;
 import de.dfki.omm.impl.rest.OMMRestImpl;
 import de.dfki.omm.interfaces.OMMBlock;
-import de.dfki.omm.types.GenericTypedValue;
-import de.dfki.omm.types.OMMEntity;
-import de.dfki.omm.types.OMMFormat;
-import de.dfki.omm.types.OMMMultiLangText;
-import de.dfki.omm.types.OMMRestAccessMode;
-import de.dfki.omm.types.URLType;
 
 /**
  * A test suite for basic memory functionality, such as creating and destroying a memory, adding and deleting blocks, handling of SecurityBlocks. 
@@ -103,7 +99,7 @@ public class BasicMemoryTests {
 		managementLink = resultText.substring(linkStart+7,linkEnd-3);
 
 		// tests the content of the root node /rest/memoryName
-		assertTrue("storage address should be correct", storageLink.endsWith("/rest/"+memoryName+"/st"));
+		assertTrue("storage address should be correct", storageLink.endsWith("/rest/" + memoryName + "/st"));
 		assertTrue("management address should be correct", managementLink.endsWith("/rest/"+memoryName+"/mgmt"));
 		
 	}
@@ -336,7 +332,64 @@ public class BasicMemoryTests {
 		// needed time is recorded in the JUnit tab
 	}
 
-	
+	/**
+	 * Tests saving in binary format
+	 * @throws IOException if something goes wrong while requesting via ClientResource
+	 */
+	@Test
+	public void testBinarySaving() throws IOException {
+
+		System.out.println("testBinarySaving with OMMRestImpl");
+
+		// if the current omm does not have any blocks, create some
+		if (omm.getAllBlocks() == null) {
+			for (OMMBlock block : createSomeBlocks(5)) {
+				omm.addBlock(block, block.getCreator());
+			}
+		}
+
+		// save current memory to binary file
+		File targetFile = new File (System.getProperty("user.dir") + "/binaryOmm.omm");
+		assertTrue(OMMFactory.serializeOMM(omm, targetFile));
+
+		// check whether file is filled with data
+		assertTrue(targetFile.exists());
+		long fileSize = targetFile.length();
+		assertTrue(fileSize > 0);
+
+		// load memory from binary file
+		OMM ommFromBinary = OMMFactory.deserializeOMM(targetFile);
+
+		// check whether the two memories are the same
+		assertTrue(isItTheSameMemory(omm, ommFromBinary));
+
+
+		// create OMMImpl
+		Collection<OMMBlock> blocks = new LinkedList<OMMBlock>();
+		Collection<OMMBlock> ommBlocks = omm.getAllBlocks();
+		if (ommBlocks != null) {
+			for (OMMBlock block : ommBlocks) {
+				blocks.add(block);
+			}
+		}
+		OMMSourceType sourceType = OMMSourceType.LocalFile;
+		OMM ommImp = OMMImpl.create(header, blocks, targetFile, sourceType);
+
+		// save created memory to binary file
+		assertTrue(OMMFactory.serializeOMM(ommImp, targetFile));
+
+		// check whether file is filled with data
+		assertTrue(targetFile.exists());
+		fileSize = targetFile.length();
+		assertTrue(fileSize > 0);
+
+		// load memory from binary file
+		OMM ommImpFromBinary = OMMFactory.deserializeOMM(targetFile);
+
+		// check whether the two memories are the same
+		assertTrue(isItTheSameMemory(ommImp, ommImpFromBinary));
+	}
+
 	/**
 	 * (After all tests) Destroys test OMM.
 	 * @throws IOException if something goes wrong while requesting via ClientResource
@@ -361,6 +414,8 @@ public class BasicMemoryTests {
 //		resultText = deleteCr.delete().getText();
 //		assertEquals("delete operation should yield the right string", "Memory "+memoryName+" successfully deleted", resultText);
 
+		// test whether the memory's folder has been deleted
+
 	}
 	
 	
@@ -378,6 +433,75 @@ public class BasicMemoryTests {
 		
 		return sb.toString();
 	}
-	
-	
+
+	/** Helper method to find out whether a restored OMM is the same as its original.
+	 * @param firstOmm one OMM to compare.
+	 * @param secondOmm the other OMM to compare.
+	 * @return true if the OMMs seem to have the same content.
+	 */
+	private boolean isItTheSameMemory(OMM firstOmm, OMM secondOmm) {
+
+		// compare headers
+		OMMHeader firstHeader = firstOmm.getHeader();
+		OMMHeader secondHeader = firstOmm.getHeader();
+		if (!firstHeader.getPrimaryID().getType().equals(secondHeader.getPrimaryID().getType())) return false;
+		if (!firstHeader.getPrimaryID().getValue().toString().equals(secondHeader.getPrimaryID().getValue().toString())) return false;
+		if (firstHeader.getVersion() != secondHeader.getVersion()) return false;
+
+		// compare blocks
+		Collection<OMMBlock> fblocks = firstOmm.getAllBlocks();
+		Collection<OMMBlock> sblocks = secondOmm.getAllBlocks();
+		// if both memories have a block list, compare blocks
+		if (fblocks != null && sblocks != null) {
+			OMMBlock[] firstBlocks = fblocks.toArray(new OMMBlock[firstOmm.getAllBlocks().size()]);
+			OMMBlock[] secondBlocks = sblocks.toArray(new OMMBlock[secondOmm.getAllBlocks().size()]);
+			if (firstBlocks.length != secondBlocks.length) return false;
+			for (int i = 0; i < firstBlocks.length; i++) {
+				OMMBlock firstBlock = firstBlocks[i];
+				OMMBlock secondBlock = secondBlocks[i];
+				if (!firstBlock.getJsonRepresentation().equals(secondBlock.getJsonRepresentation())) return false;
+			}
+		}
+		// if neither memory has a block list return true, else return false
+		else if (fblocks == null)
+			return (sblocks == null);
+		else return false;
+
+		// if you got here, everything seems to be the same
+		return true;
+	}
+
+	/** Helper method to create a list of randomized OMMBlocks as example entries.
+	 * @param number of the blocks to be created.
+	 * @return A List<OMMBlock> of the requested amount containing random entries.
+	 */
+	private List<OMMBlock> createSomeBlocks(int number) {
+
+		List<OMMBlock> blocklist = new Vector<OMMBlock>();
+
+		for (int i = 0; i < number; i++) {
+
+			// create block content
+			String resultText = "";
+			String payload = getRandomString(20);
+			String titleString = getRandomString(20);
+			String descriptionString = getRandomString(20);
+			String creatorEmail = getRandomString(20);
+			String creationTime =  new SimpleDateFormat("yyyyMMdd_HHmmss").format(Calendar.getInstance().getTime());
+
+			// create block parameters
+			OMMMultiLangText title = new OMMMultiLangText();
+			title.put(Locale.ENGLISH, titleString);
+			OMMMultiLangText description = new OMMMultiLangText();
+			description.put(Locale.ENGLISH, descriptionString);
+			OMMEntity creatorEntity = new OMMEntity("email", creatorEmail, creationTime);
+
+			// create and add block
+			OMMBlockImpl block = (OMMBlockImpl) OMMBlockImpl.create("testID", header.getPrimaryID(), URI.create("urn:sample:testBlock"), null, title, description, null, creatorEntity, new OMMFormat("text/plain", null, null), null, new GenericTypedValue("text/plain", payload), null, null, null);
+			blocklist.add(block);
+
+		}
+
+		return blocklist;
+	}
 }

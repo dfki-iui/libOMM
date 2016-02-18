@@ -2,6 +2,7 @@ package de.dfki.omm.types;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
+import java.io.Serializable;
 import java.security.cert.CertificateEncodingException;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
@@ -12,7 +13,7 @@ import java.util.List;
 import java.util.Vector;
 
 /** An individual or agent that initiates changes in the state of an OMM. */
-public class OMMEntity 
+public class OMMEntity implements Serializable
 {
 	private String m_value, m_type, m_date;
 	private final String x509Begin = "-----BEGIN CERTIFICATE-----\n", x509End = "-----END CERTIFICATE-----";

@@ -2,8 +2,10 @@ package de.dfki.omm.types;
 
 import de.dfki.omm.interfaces.OMMBlock;
 
+import java.io.Serializable;
+
 /** Provides the ID and type of a previous block. */
-public class OMMPreviousBlockLink {
+public class OMMPreviousBlockLink implements Serializable{
 
 	private String m_id;
 	private OMMPreviousBlockType m_type;

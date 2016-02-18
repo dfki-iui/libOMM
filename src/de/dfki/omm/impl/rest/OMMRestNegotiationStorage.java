@@ -5,8 +5,10 @@ import org.json.JSONObject;
 
 import de.dfki.omm.interfaces.JSONOutput;
 
+import java.io.Serializable;
+
 /** Representation of an OMM's block storage node in the REST interface. */
-public class OMMRestNegotiationStorage implements JSONOutput
+public class OMMRestNegotiationStorage implements JSONOutput, Serializable
 {
 	private boolean m_distributed = false;
 	private boolean m_deleteDisabled = false;

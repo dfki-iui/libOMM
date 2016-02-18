@@ -5,5 +5,5 @@ package de.dfki.omm.tools;
 public enum OMMActionResultType 
 {
 	OK, UnknownError,
-	BlockNotExistent, BlockWithSameIDExists, Forbidden
+	BlockNotExistent, BlockWithSameIDExists, result, Forbidden
 }

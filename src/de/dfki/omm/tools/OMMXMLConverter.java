@@ -126,151 +126,158 @@ public class OMMXMLConverter
 	 */
 	public static OMMBlock parseBlock(Element e, String blockID)
 	{
-		if (blockID == null) blockID = e.getAttribute(OMM_NAMESPACE_PREFIX+":id");
-		String linkHash = null;
-		URI namespace = null;
-		URL type = null;
-		OMMFormat format = null;
-		TypedValue link = null;
-		TypedValue payload = null;
-		Element payloadElement = null;
-		OMMMultiLangText titles = new OMMMultiLangText();
-		OMMMultiLangText descriptions = null;
-		OMMEntity creator = null;
-		OMMEntityCollection contributors = null;
-		OMMSubjectCollection subjects = null;
-		TypedValue primaryID = null;
-		OMMPreviousBlockLink prevBlock = null;
-		
-		NodeList nodeList = e.getChildNodes();
-		for(int i = 0; i < nodeList.getLength(); i++)
-		{
-			Node node = nodeList.item(i);			
-			if (!(node instanceof Element)) continue;
+		if (e != null) {
 
-			Element cElement = (Element)node;
-			if (cElement.getNodeName().equals(OMM_NAMESPACE_PREFIX+":primaryID"))
-			{
-				primaryID = getTypedValue(cElement.getAttribute(OMM_NAMESPACE_PREFIX+":type"), cElement.getTextContent());
-			}
-			else if (cElement.getNodeName().equals(OMM_NAMESPACE_PREFIX+":namespace"))
-			{
-				namespace = URI.create(cElement.getTextContent());
-			}
-			else if (cElement.getNodeName().equals(OMM_NAMESPACE_PREFIX+":title"))
-			{
-				String langText = cElement.getAttribute("xml:lang"); 
-				titles.put(new Locale(langText), cElement.getTextContent());
-			}
-			else if (cElement.getNodeName().equals(OMM_NAMESPACE_PREFIX+":creation"))
-			{
-				Element creatorE = findChild(cElement, OMM_NAMESPACE_PREFIX+":creator");
-				Element creatorD = findChild(cElement, OMM_NAMESPACE_PREFIX+":date");
+			if (blockID == null) blockID = e.getAttribute(OMM_NAMESPACE_PREFIX+":id");
+			String linkHash = null;
+			URI namespace = null;
+			URL type = null;
+			OMMFormat format = null;
+			TypedValue link = null;
+			TypedValue payload = null;
+			Element payloadElement = null;
+			OMMMultiLangText titles = new OMMMultiLangText();
+			OMMMultiLangText descriptions = null;
+			OMMEntity creator = null;
+			OMMEntityCollection contributors = null;
+			OMMSubjectCollection subjects = null;
+			TypedValue primaryID = null;
+			OMMPreviousBlockLink prevBlock = null;
 
-				creator = new OMMEntity(creatorE.getAttribute(OMM_NAMESPACE_PREFIX+":type"), creatorE.getTextContent(), getISO8601String(creatorD.getAttribute(OMM_NAMESPACE_PREFIX+":encoding"), creatorD.getTextContent()));
-			}
-			else if (cElement.getNodeName().equals(OMM_NAMESPACE_PREFIX+":contribution"))
+			NodeList nodeList = e.getChildNodes();
+			for(int i = 0; i < nodeList.getLength(); i++)
 			{
-				Element creatorE = findChild(cElement, OMM_NAMESPACE_PREFIX+":contributor");
-				Element creatorD = findChild(cElement, OMM_NAMESPACE_PREFIX+":date");
-				
-				OMMEntity contributor = new OMMEntity(creatorE.getAttribute(OMM_NAMESPACE_PREFIX+":type"), creatorE.getTextContent(), getISO8601String(creatorD.getAttribute(OMM_NAMESPACE_PREFIX+":encoding"), creatorD.getTextContent()));
-				if (contributors == null) contributors = new OMMEntityCollection(); 
-				contributors.add(contributor);
-			}
-			else if (cElement.getNodeName().equals(OMM_NAMESPACE_PREFIX+":description"))
-			{
-				String langText = cElement.getAttribute("xml:lang");
-				if (descriptions == null) descriptions = new OMMMultiLangText();
-				descriptions.put(new Locale(langText), cElement.getTextContent());
-			}
-			else if (cElement.getNodeName().equals(OMM_NAMESPACE_PREFIX+":format"))
-			{
-				try
+				Node node = nodeList.item(i);
+				if (!(node instanceof Element)) continue;
+
+				Element cElement = (Element)node;
+				if (cElement.getNodeName().equals(OMM_NAMESPACE_PREFIX+":primaryID"))
 				{
-					String schemaValue = cElement.getAttribute(OMM_NAMESPACE_PREFIX+":schema");
-					URL schema = null;
-					if (schemaValue != null && !schemaValue.isEmpty()) schema = URI.create(schemaValue).toURL();
-					
-					String encryption = cElement.getAttribute(OMM_NAMESPACE_PREFIX+":encryption");
-					
-					format = new OMMFormat(cElement.getTextContent(), schema, encryption);
+					primaryID = getTypedValue(cElement.getAttribute(OMM_NAMESPACE_PREFIX+":type"), cElement.getTextContent());
 				}
-				catch(Exception ex)				
+				else if (cElement.getNodeName().equals(OMM_NAMESPACE_PREFIX+":namespace"))
 				{
-					ex.printStackTrace();
-				}				
-			}
-			else if (cElement.getNodeName().equals(OMM_NAMESPACE_PREFIX+":type"))
-			{
-				try
-				{
-					type = URI.create(cElement.getTextContent()).toURL();
+					namespace = URI.create(cElement.getTextContent());
 				}
-				catch(Exception ex) { ex.printStackTrace(); }
-			}
-			else if (cElement.getNodeName().equals(OMM_NAMESPACE_PREFIX+":subject"))
-			{
-				NodeList cNodeList = cElement.getChildNodes();
-				for(int k = 0; k < cNodeList.getLength(); k++)
+				else if (cElement.getNodeName().equals(OMM_NAMESPACE_PREFIX+":title"))
 				{
-					Node subjChild = cNodeList.item(k); 
-					if (!(subjChild instanceof Element)) continue;
-					Element subElement = (Element)subjChild;
-					
-					OMMSubjectTag tag = getSubjectTag(subElement);
-					if (tag != null) 
+					String langText = cElement.getAttribute("xml:lang");
+					titles.put(new Locale(langText), cElement.getTextContent());
+				}
+				else if (cElement.getNodeName().equals(OMM_NAMESPACE_PREFIX+":creation"))
+				{
+					Element creatorE = findChild(cElement, OMM_NAMESPACE_PREFIX+":creator");
+					Element creatorD = findChild(cElement, OMM_NAMESPACE_PREFIX+":date");
+
+					creator = new OMMEntity(creatorE.getAttribute(OMM_NAMESPACE_PREFIX+":type"), creatorE.getTextContent(), getISO8601String(creatorD.getAttribute(OMM_NAMESPACE_PREFIX+":encoding"), creatorD.getTextContent()));
+				}
+				else if (cElement.getNodeName().equals(OMM_NAMESPACE_PREFIX+":contribution"))
+				{
+					Element creatorE = findChild(cElement, OMM_NAMESPACE_PREFIX+":contributor");
+					Element creatorD = findChild(cElement, OMM_NAMESPACE_PREFIX+":date");
+
+					OMMEntity contributor = new OMMEntity(creatorE.getAttribute(OMM_NAMESPACE_PREFIX+":type"), creatorE.getTextContent(), getISO8601String(creatorD.getAttribute(OMM_NAMESPACE_PREFIX+":encoding"), creatorD.getTextContent()));
+					if (contributors == null) contributors = new OMMEntityCollection();
+					contributors.add(contributor);
+				}
+				else if (cElement.getNodeName().equals(OMM_NAMESPACE_PREFIX+":description"))
+				{
+					String langText = cElement.getAttribute("xml:lang");
+					if (descriptions == null) descriptions = new OMMMultiLangText();
+					descriptions.put(new Locale(langText), cElement.getTextContent());
+				}
+				else if (cElement.getNodeName().equals(OMM_NAMESPACE_PREFIX+":format"))
+				{
+					try
 					{
-						if (subjects == null) subjects = new OMMSubjectCollection();
-						subjects.add(tag);						
+						String schemaValue = cElement.getAttribute(OMM_NAMESPACE_PREFIX+":schema");
+						URL schema = null;
+						if (schemaValue != null && !schemaValue.isEmpty()) schema = URI.create(schemaValue).toURL();
+
+						String encryption = cElement.getAttribute(OMM_NAMESPACE_PREFIX+":encryption");
+
+						format = new OMMFormat(cElement.getTextContent(), schema, encryption);
+					}
+					catch(Exception ex)
+					{
+						ex.printStackTrace();
 					}
 				}
-			}
-			else if (cElement.getNodeName().equals(OMM_NAMESPACE_PREFIX+":previousBlock"))
-			{
-				prevBlock = OMMPreviousBlockLink.createFromString(cElement.getTextContent(), cElement.getAttribute(OMM_NAMESPACE_PREFIX+":previousBlockType"));
-			}
-			else if (cElement.getNodeName().equals(OMM_NAMESPACE_PREFIX+":link"))
-			{
-				linkHash = cElement.getAttribute(OMM_NAMESPACE_PREFIX+":hash");
-				link = getTypedValue(cElement.getAttribute(OMM_NAMESPACE_PREFIX+":type"), cElement.getTextContent());
-			}
-			else if (cElement.getNodeName().equals(OMM_NAMESPACE_PREFIX+":payload"))
-			{
-				String encoding = cElement.getAttribute(OMM_NAMESPACE_PREFIX+":encoding");				
-				payloadElement = cElement;
-				payload = getTypedValue(encoding, cElement.getTextContent());//decodePayload(payloadEncoding, cElement.getValue());
-			}
-		}
-		
-		OMMBlockImpl block = (OMMBlockImpl)OMMBlockImpl.create(blockID, primaryID, namespace, type, titles, descriptions, contributors, creator, format, subjects, prevBlock, payload, payloadElement, link, linkHash);
+				else if (cElement.getNodeName().equals(OMM_NAMESPACE_PREFIX+":type"))
+				{
+					try
+					{
+						type = URI.create(cElement.getTextContent()).toURL();
+					}
+					catch(Exception ex) { ex.printStackTrace(); }
+				}
+				else if (cElement.getNodeName().equals(OMM_NAMESPACE_PREFIX+":subject"))
+				{
+					NodeList cNodeList = cElement.getChildNodes();
+					for(int k = 0; k < cNodeList.getLength(); k++)
+					{
+						Node subjChild = cNodeList.item(k);
+						if (!(subjChild instanceof Element)) continue;
+						Element subElement = (Element)subjChild;
 
-		// inline xml found -> might be a special OMM block
-		if (namespace != null)
-		{
-			if (namespace.toString().equals("urn:omm:block:structure"))
-			{
-				OMMStructureBlock sBlock = new OMMStructureBlockImpl(block);
-				return sBlock;
+						OMMSubjectTag tag = getSubjectTag(subElement);
+						if (tag != null)
+						{
+							if (subjects == null) subjects = new OMMSubjectCollection();
+							subjects.add(tag);
+						}
+					}
+				}
+				else if (cElement.getNodeName().equals(OMM_NAMESPACE_PREFIX+":previousBlock"))
+				{
+					prevBlock = OMMPreviousBlockLink.createFromString(cElement.getTextContent(), cElement.getAttribute(OMM_NAMESPACE_PREFIX+":previousBlockType"));
+				}
+				else if (cElement.getNodeName().equals(OMM_NAMESPACE_PREFIX+":link"))
+				{
+					linkHash = cElement.getAttribute(OMM_NAMESPACE_PREFIX+":hash");
+					link = getTypedValue(cElement.getAttribute(OMM_NAMESPACE_PREFIX+":type"), cElement.getTextContent());
+				}
+				else if (cElement.getNodeName().equals(OMM_NAMESPACE_PREFIX+":payload"))
+				{
+					String encoding = cElement.getAttribute(OMM_NAMESPACE_PREFIX+":encoding");
+					payloadElement = cElement;
+					payload = getTypedValue(encoding, cElement.getTextContent());//decodePayload(payloadEncoding, cElement.getValue());
+				}
 			}
-			else if (namespace.toString().equals("urn:omm:block:indentifications"))
+
+			OMMBlockImpl block = (OMMBlockImpl)OMMBlockImpl.create(blockID, primaryID, namespace, type, titles, descriptions, contributors, creator, format, subjects, prevBlock, payload, payloadElement, link, linkHash);
+
+			// inline xml found -> might be a special OMM block
+			if (namespace != null)
 			{
-				OMMIdentifierBlock iBlock = new OMMIdentifierBlockImpl(block);
-				return iBlock;
+				if (namespace.toString().equals("urn:omm:block:structure"))
+				{
+					OMMStructureBlock sBlock = new OMMStructureBlockImpl(block);
+					return sBlock;
+				}
+				else if (namespace.toString().equals("urn:omm:block:indentifications"))
+				{
+					OMMIdentifierBlock iBlock = new OMMIdentifierBlockImpl(block);
+					return iBlock;
+				}
 			}
+
+			if (isOMMAttributesTemplate(block))
+			{
+				OMMAttributeListBlock aBlock = new OMMAttributeListBlockImpl(block);
+				return aBlock;
+			}
+
+//			System.out.println("-- parsed creator = "+creator.getType()+" / "+creator.getValue()+" / "+creator.getDateAsISO8601());
+//			System.out.println("-- block is created : "+block.toString());
+//			System.out.println("---");
+
+			return block;
+
 		}
-		
-		if (isOMMAttributesTemplate(block))
-		{
-			OMMAttributeListBlock aBlock = new OMMAttributeListBlockImpl(block);
-			return aBlock;
-		}			
-		
-//		System.out.println("-- parsed creator = "+creator.getType()+" / "+creator.getValue()+" / "+creator.getDateAsISO8601());
-//		System.out.println("-- block is created : "+block.toString());
-//		System.out.println("---");
-		
-		return block;
+
+		return null;
+
 	}
 	
 	/** Converts an explicitly given type and value pair to a {@link TypedValue} object. 
@@ -477,8 +484,8 @@ public class OMMXMLConverter
 			Element e = createXmlElementAndAppend(doc, "block", OMM_NAMESPACE_PREFIX, OMM_NAMESPACE_URI);
 			// <-- THE FOLLOWING LINE IS VERY IMPORTANT!!! -->
 			e.setAttribute("xmlns:"+OMM_NAMESPACE_PREFIX, OMM_NAMESPACE_URI);
-			e.setAttributeNS(OMM_NAMESPACE_URI, OMM_NAMESPACE_PREFIX+":id", block.getID());
-			
+			e.setAttributeNS(OMM_NAMESPACE_URI, OMM_NAMESPACE_PREFIX + ":id", block.getID());
+
 			List<Element> elements = generateBlock(doc, block, withPayload);
 			for(Element element : elements)
 			{
@@ -887,7 +894,7 @@ public class OMMXMLConverter
 	{	
 		Document doc = createNewXmlDocument();
 		Element root = createXmlElementAndAppend(doc, "omm", OMM_NAMESPACE_PREFIX, OMM_NAMESPACE_URI);
-		root.setAttribute("xmlns:"+OMM_NAMESPACE_PREFIX, OMM_NAMESPACE_URI);
+		root.setAttribute("xmlns:" + OMM_NAMESPACE_PREFIX, OMM_NAMESPACE_URI);
 		
 		Element eHeader = OMMXMLConverter.generateHeaderDocument(omm.getHeader()).getDocumentElement();
 		root.appendChild(doc.importNode(eHeader, true));
@@ -897,13 +904,16 @@ public class OMMXMLConverter
 			Element eToC = OMMXMLConverter.generateToCElement(omm.getTableOfContents());
 			root.appendChild(doc.importNode(eToC, true));			
 		}
-		
-		for(OMMBlock block : omm.getAllBlocks())
-		{
-			Element eBlock = generateCompleteBlock(block, true).getDocumentElement();
-			root.appendChild(doc.importNode(eBlock, true));
-		}		
-				
+
+		Collection<OMMBlock> blocks = omm.getAllBlocks();
+		if (blocks != null) {
+			for(OMMBlock block : blocks)
+			{
+				Element eBlock = generateCompleteBlock(block, true).getDocumentElement();
+				root.appendChild(doc.importNode(eBlock, true));
+			}
+		}
+
 		return toXMLFileString(root);
 	}
 	

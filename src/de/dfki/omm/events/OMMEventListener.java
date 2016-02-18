@@ -1,5 +1,7 @@
 package de.dfki.omm.events;
 
+import java.io.Serializable;
+
 /**
  * Interface for classes that can react to {@link OMMEvent}s. 
  */

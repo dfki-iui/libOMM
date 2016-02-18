@@ -5,8 +5,10 @@ import org.json.JSONObject;
 
 import de.dfki.omm.interfaces.JSONOutput;
 
+import java.io.Serializable;
+
 /** Representation of an OMM's management node in the REST interface. */
-public class OMMRestNegotiationManagement implements JSONOutput
+public class OMMRestNegotiationManagement implements JSONOutput, Serializable
 {
 	private String m_link = null;
 	private boolean m_flush = false;

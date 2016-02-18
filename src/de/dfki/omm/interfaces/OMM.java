@@ -1,5 +1,6 @@
 package de.dfki.omm.interfaces;
 
+import java.io.Serializable;
 import java.util.Collection;
 import java.util.List;
 
@@ -13,7 +14,7 @@ import de.dfki.omm.types.OMMEntity;
  * @author Jens Haupert (jens.haupert@dfki.de)
  *
  */
-public interface OMM 
+public interface OMM extends Serializable
 {
 	/***
 	 * Retrieves the header of this object memory.

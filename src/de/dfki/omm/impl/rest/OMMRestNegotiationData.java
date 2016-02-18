@@ -7,8 +7,10 @@ import de.dfki.omm.acl.OMSCredentials;
 import de.dfki.omm.interfaces.JSONOutput;
 import de.dfki.omm.tools.DownloadHelper;
 
+import java.io.Serializable;
+
 /** Basic information about an OMM and its REST interface, such as the address to the block storage or the management node. */
-public class OMMRestNegotiationData implements JSONOutput {
+public class OMMRestNegotiationData implements JSONOutput, Serializable {
 	
 	private int m_version = -1;
 	private OMMRestNegotiationStorage m_storage = null;

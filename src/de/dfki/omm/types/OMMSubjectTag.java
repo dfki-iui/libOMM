@@ -3,8 +3,10 @@ package de.dfki.omm.types;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.Serializable;
+
 /** A single subject tag which might be or be part of an OMM block's subject field. */
-public class OMMSubjectTag 
+public class OMMSubjectTag implements Serializable
 {
 	private OMMSubjectTagType m_type;
 	private String m_value;

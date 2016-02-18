@@ -1,17 +1,13 @@
 package de.dfki.omm.types;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.InputStream;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.net.URL;
 import java.util.Collections;
 import java.util.List;
 import java.util.Vector;
 
 /** Describes the format of an OMM block's payload. */
-public class OMMFormat 
+public class OMMFormat implements Serializable
 {
 	private String m_mimeType;
 	private URL m_schema;

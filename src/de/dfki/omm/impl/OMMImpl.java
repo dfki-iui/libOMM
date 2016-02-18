@@ -1,6 +1,8 @@
 package de.dfki.omm.impl;
 
 import java.io.File;
+import java.io.IOException;
+import java.io.Serializable;
 import java.net.URL;
 import java.util.Collection;
 import java.util.HashSet;
@@ -24,7 +26,7 @@ import de.dfki.omm.types.OMMSourceType;
 import de.dfki.omm.types.TypedValue;
 
 /** Implementation of {@link OMM}. */
-public class OMMImpl implements OMM
+public class OMMImpl implements OMM, Serializable
 {	
 	public static int VERSION = 1;
 	protected OMMHeader m_header = null;
@@ -32,8 +34,8 @@ public class OMMImpl implements OMM
 	protected URL m_sourceURL = null;
 	protected File m_sourceFile = null;
 	protected OMMSourceType m_sourceType = null;
-	protected HashSet<OMMEventListener> m_listener = null;
-	protected ExecutorService exService;
+	protected transient HashSet<OMMEventListener> m_listener = null;
+	protected transient ExecutorService exService;
 	
 	protected OMMImpl() 
 	{	
@@ -56,7 +58,7 @@ public class OMMImpl implements OMM
 	
 	/** Creates a new empty OMM. 
 	 * 
-	 * @param secureHeader An {@link OMMSecurityHeader} for the new OMM. 
+	 * @param secureHeader An {@link OMMHeader} for the new OMM.
 	 * @return The created memory as {@link OMM}. 
 	 */
 	public static OMM create(OMMHeader secureHeader)
@@ -166,7 +168,9 @@ public class OMMImpl implements OMM
 	
 	public Collection<OMMBlock> getAllBlocks()
 	{
-		return m_blocks.values();
+		if (m_blocks != null)
+			return m_blocks.values();
+		else return null;
 	}
 
 
@@ -196,7 +200,7 @@ public class OMMImpl implements OMM
 	public void setSource(File newSource) { m_sourceURL = null; m_sourceFile = newSource; }
 	
 	/** Sets the object memory's source, overwriting an existing one. 
-	 * @param newSourceType The new {@link setSourceType}. 
+	 * @param newSourceType The new {@link OMMSourceType}.
 	 */
 	public void setSourceType(OMMSourceType newSourceType) { m_sourceType = newSourceType; }
 	
@@ -330,6 +334,98 @@ public class OMMImpl implements OMM
 				}
 			});			
 		}
+	}
+
+
+	/**
+	 * Custom method to serialize OMMImpls and their blocks properly
+	 *
+	 * @param outputStream Stream to write to
+	 * @throws IOException
+	 */
+	private synchronized void writeObject(java.io.ObjectOutputStream outputStream) throws IOException {
+
+		System.out.println("OMMImpl.writeObject");
+
+		// write serializable memory information
+		outputStream.defaultWriteObject();
+
+		// write header
+		outputStream.writeObject(getHeader());
+
+		// write owner
+		String[] primaryID = getHeader().getPrimaryID().getValue().toString().split("/");
+		String memoryName = primaryID[primaryID.length-1];
+		outputStream.writeObject(OMMFactory.getOwnerBlockFromOMM(memoryName));
+
+		// write memory blocks
+		// (order of written objects will be maintained when reading)
+		Collection<OMMBlock> blocks = this.getAllBlocks();
+		if (blocks != null) {
+			outputStream.writeObject(blocks.size());            // write number of blocks
+			for (OMMBlock block : blocks) {                     // write blocks
+				outputStream.writeObject(block);
+			}
+		}
+		else outputStream.writeObject(0);						// if memory does not contain blocks
+
+	}
+
+	/**
+	 * Custom method to deserialize OMMImpls and their blocks properly
+	 *
+	 * @param inputStream Stream to read from
+	 * @throws IOException
+	 */
+	private synchronized void readObject(java.io.ObjectInputStream inputStream) throws IOException, ClassNotFoundException {
+
+		System.out.println("OMMImpl.readObject");
+
+		// read serializable memory information
+		inputStream.defaultReadObject();
+
+		// read header
+		OMMHeader header = null;
+		Object loadedInfo = inputStream.readObject();
+		if (loadedInfo instanceof OMMHeader) {
+			header = (OMMHeader) loadedInfo;
+		}
+
+		// read owner
+		OMMBlock owner = null;
+		loadedInfo = inputStream.readObject();
+		if (loadedInfo instanceof OMMBlock) {
+			owner = (OMMBlock) loadedInfo;
+		}
+
+		// create new OMM on the OMS and add loaded blocks
+		if (header != null) {
+
+			// create empty OMM to add blocks to
+			String omsUrl = header.getPrimaryID().getValue().toString();
+			omsUrl = omsUrl.substring(0, omsUrl.indexOf("rest/"));
+			OMMFactory.createOMMViaOMSRestInterface(omsUrl + "mgmt/createMemory", header, owner);
+
+			// read memory blocks
+			loadedInfo = inputStream.readObject(); 		// read number of blocks
+			int numberOfBlocks = -1;
+			if (loadedInfo instanceof Integer) {
+				numberOfBlocks = (int) loadedInfo;
+			}
+			for (int i = 0; i < numberOfBlocks; i++) {			// read blocks
+				loadedInfo = inputStream.readObject();
+				if (loadedInfo instanceof OMMBlock) {
+					OMMBlock block = (OMMBlock) loadedInfo;
+					this.addBlock(block, block.getCreator());
+				}
+			}
+		}
+
+		// initialize exService (cannot be serialized, as it is concurrent)
+		exService = Executors.newCachedThreadPool();
+
+		// initialize m_listener (as empty, Listeners will be added during runtime)
+		m_listener = new HashSet<OMMEventListener>();
 	}
 
 }
